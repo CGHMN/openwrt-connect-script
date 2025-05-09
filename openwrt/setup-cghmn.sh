@@ -148,8 +148,8 @@ step_install_pkgs () {
 	opkg install \
 		luci-proto-wireguard \
 		luci-proto-gre \
-		kmod-nft-bridge \ |
-			echo_pipe_verbose || \
+		kmod-nft-bridge \
+			| echo_pipe_verbose || \
 				failed "installing required packages"
 
 	echo "OK"
