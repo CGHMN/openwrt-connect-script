@@ -223,7 +223,7 @@ step_init() {
 		    procd_close_instance
 		}
 	EOINITD
-	chmod +x /etc/init.d/cghmn-brigde-filter || failed "mark bridge-filter service executable"
+	chmod +x /etc/init.d/cghmn-bridge-filter || failed "mark bridge-filter service executable"
 	service cghmn-bridge-filter enable || failed "enable bride-filter service at boot"
 	cat >/etc/hotplug.d/iface/90-cghmn-wg <<-"EOHOTPLUGD" || failed "copy wg hotplug.d handler"
 		#!/bin/sh
