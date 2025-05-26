@@ -24,7 +24,7 @@ usage() {
 			install-pkgs  Step 1, installs required packages
 			init          Step 2, initializes the CGHMN network configuration
 			set-tunnel-ip Step 3, sets your tunnel IP address
-			disable-nat   Optionally disables NAT on the Retro LAN interface for the routed subnet
+			pubkey-qr     Prints your Wireguard public key as QR code
 			help          Show this help
 
 		And <action-params> can be any of the following:
@@ -155,6 +155,74 @@ step_install_pkgs () {
 	echo "OK"
 }
 
+# Install qrencode package
+install_qrencode () {
+	echo_verbose "Updating package database ..."
+	opkg update | echo_pipe_verbose || failed "updating package database"
+
+	echo_verbose "Installing qrencode"
+	opkg install \
+		qrencode \
+			| echo_pipe_verbose || \
+				failed "installing required packages"
+
+	echo "OK"
+}
+
+# Installs NFT filters to block IP traffic on L2 tunnels
+install_gretap_nft_filter() {
+	echo_verbose "Installing GRETAP bridge filter"
+	cat >/etc/cghmn-bridge-filter.nft <<-EONFT || failed "copy bridge-filter ruleset"
+		#!/usr/sbin/nft -f
+
+		table bridge filter {}
+		flush table bridge filter
+
+		table bridge filter {
+		    chain forward {
+		        type filter hook forward priority 0; policy accept;
+		        jump drop_in
+		        jump drop_out
+		    }
+		    chain output {
+		        type filter hook output priority 0; policy accept;
+		        jump drop_out
+		    }
+		    chain input {
+		        type filter hook input priority 0; policy accept;
+		        jump drop_in
+		    }
+		    chain drop_in {
+		        iifname gre4t* meta ibrname br-retrolan meta protocol ip drop comment "Drop IP packets flowing out of bridge via GRE"
+		        iifname vxlan* meta ibrname br-retrolan meta protocol ip drop comment "Drop IP packets flowing out of bridge via VXLAN"
+		    }
+		    chain drop_out {
+		        oifname gre4t* meta obrname br-retrolan meta protocol ip drop comment "Drop IP packets flowing out of bridge via GRE"
+		        oifname vxlan* meta obrname br-retrolan meta protocol ip drop comment "Drop IP packets flowing out of bridge via VXLAN"
+		    }
+		}
+	EONFT
+
+	cat >/etc/init.d/cghmn-bridge-filter <<-EOINITD || failed "copy bridge-filter service"
+		#!/bin/sh /etc/rc.common
+		# Init script for CGHMN nftables GRE and VXLAN IP filter
+
+		USE_PROCD=1
+
+		START=10
+		STOP=15
+
+		start_service () {
+		    procd_open_instance cghmn-nftables-bridge-filter
+		    procd_set_param command /usr/sbin/nft -f /etc/cghmn-bridge-filter.nft
+		    procd_close_instance
+		}
+	EOINITD
+	chmod +x /etc/init.d/cghmn-bridge-filter || failed "mark bridge-filter service executable"
+	service cghmn-bridge-filter enable || failed "enable bridge-filter service at boot"
+	service cghmn-bridge-filter start || failed "start bridge-filter service now"
+}
+
 # Second step of the setup. Creates a generic Wireguard configuration for the CGHMN,
 # generates a new public/private key pair and echoes it to the user to send to the CGHMN
 # admins to be added to the server configuration.
@@ -192,39 +260,9 @@ step_init() {
 	echo "Initializing CGHMN network configuration ..."
 
 	echo_verbose "Installing GRETAP scripts"
-	cat >/etc/cghmn-bridge-filter.nft <<-EONFT || failed "copy bridge-filter ruleset"
-		#!/usr/sbin/nft -f
+	
+	install_gretap_nft_filter || failed "Install GRETAP NFT filter"
 
-		table bridge filter {}
-		flush table bridge filter
-
-		table bridge filter {
-		    chain forward {
-		        type filter hook forward priority 0; policy accept;
-		        iifname gre4t* meta ibrname br-retrolan meta protocol ip drop comment "Drop IP packets coming into bridge via GRE"
-		        oifname gre4t* meta ibrname br-retrolan meta protocol ip drop comment "Drop IP packets flowing out of bridge via GRE"
-		        iifname vxlan* meta ibrname br-retrolan meta protocol ip drop comment "Drop IP packets coming into bridge via VXLAN"
-		        oifname vxlan* meta ibrname br-retrolan meta protocol ip drop comment "Drop IP packets flowing out of bridge via VXLAN"
-		    }
-		}
-	EONFT
-	cat >/etc/init.d/cghmn-bridge-filter <<-EOINITD || failed "copy bridge-filter service"
-		#!/bin/sh /etc/rc.common
-		# Init script for CGHMN nftables GRE and VXLAN IP filter
-
-		USE_PROCD=1
-
-		START=10
-		STOP=15
-
-		start_service () {
-		    procd_open_instance cghmn-nftables-bridge-filter
-		    procd_set_param command /usr/sbin/nft -f /etc/cghmn-bridge-filter.nft
-		    procd_close_instance
-		}
-	EOINITD
-	chmod +x /etc/init.d/cghmn-bridge-filter || failed "mark bridge-filter service executable"
-	service cghmn-bridge-filter enable || failed "enable bride-filter service at boot"
 	cat >/etc/hotplug.d/iface/90-cghmn-wg <<-"EOHOTPLUGD" || failed "copy wg hotplug.d handler"
 		#!/bin/sh
 
@@ -438,6 +476,9 @@ step_init() {
 	echo "Change the 'INPUT' mode from 'accept' to 'reject' on the Retro LAN zone under"
 	echo "the web UI menu Network -> Firewall if that is not desired."
 	echo ""
+	echo "PS: If copy-paste is not available, run '$(basename "$0") pubkey-qr' to show your public key"
+	echo "    in QR code format to scan with a phone or tablet. This installs qrencode, make sure there"
+	echo "    is enough flash space available (~80k)"
 
 	echo "OK"
 	mark_step_configured "init"
@@ -542,6 +583,12 @@ case "${ACTION}" in
 	set-tunnel-ip)
 		step_set_tunnel_ip
 		;;
+	install-bridge-filter)
+		install_gretap_nft_filter || failed "install GRETAP bridge filter"
+		;;
+	pubkey-qr)
+		install_qrencode || failed "install qrencode"
+		uci get network.cghmn_wg.private_key | wg pubkey | qrencode -t ansiutf8
 	*)
 		echo "Unknown action '${ACTION}'" >&2
 		exit 1
