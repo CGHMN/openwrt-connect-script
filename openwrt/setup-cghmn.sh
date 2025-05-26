@@ -589,6 +589,7 @@ case "${ACTION}" in
 	pubkey-qr)
 		install_qrencode || failed "install qrencode"
 		uci get network.cghmn_wg.private_key | wg pubkey | qrencode -t ansiutf8
+		;;
 	*)
 		echo "Unknown action '${ACTION}'" >&2
 		exit 1
