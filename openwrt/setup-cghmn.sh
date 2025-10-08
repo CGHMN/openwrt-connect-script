@@ -492,7 +492,7 @@ step_set_tunnel_ip() {
 	echo "This assumed you've already received your tunnel IP and your routed subnet from us"
 	echo "in response to you sending us your Wireguard public key."
 	echo ""
-	echo "Please enter your tunnel IP and routed subnet IP below:"
+	echo "Please enter your tunnel IP, routed subnet IP and optionally a Preshared Key below:"
 	echo ""
 	echo -n "Tunnel IP: "
 	read -r TUNNEL_IP
