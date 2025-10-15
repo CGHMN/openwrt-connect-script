@@ -525,7 +525,7 @@ step_set_tunnel_ip() {
 
 	if [ -n "${PSK}" ]; then
 		echo_verbose "Adding CGHMN Wireguard tunnel interface Preshared Key"
-		uci -q set network.cghmn_wg.preshared_key="${PSK}" || \
+		uci -q set network.@wireguard_cghmn_wg[-1].preshared_key="${PSK}" || \
 			failed "adding CGHMN Wireguard tunnel Preshared Key"
 	fi
 
