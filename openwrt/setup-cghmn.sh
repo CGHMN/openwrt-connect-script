@@ -7,7 +7,7 @@ set -e
 # -- Static variables -- #
 
 # Wireguard transport tunnel configuration
-WG_PEER_ADDRESS="wg-admin.cursedsilicon.net"
+WG_PEER_ADDRESS="us.wg.cghmn.org"
 WG_PEER_PUBKEY="k/QiJIbMakMKgTCHVt8/D+8k4DzRVM6U33F3gMZfRUg="
 WG_PEER_PORT=42070
 WG_MTU=1320
