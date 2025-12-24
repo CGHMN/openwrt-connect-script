@@ -10,8 +10,8 @@ set -e
 WG_PEER_ADDRESS="wg-admin.cursedsilicon.net"
 WG_PEER_PUBKEY="k/QiJIbMakMKgTCHVt8/D+8k4DzRVM6U33F3gMZfRUg="
 WG_PEER_PORT=42070
-WG_MTU=1420
-WG_TUNNEL_REMOTE_SUBNETS_IP4="172.23.0.0/16 100.89.128.0/22 100.96.0.0/13"
+WG_MTU=1320
+WG_TUNNEL_REMOTE_SUBNETS_IP4="100.64.0.0/10"
 
 # Shows script usage
 usage() {
@@ -271,7 +271,7 @@ step_init() {
 		if [ "${ACTION}" = "ifup" ]; then
 		    [ -e "/sys/class/net/gre4t-cghmn_gre" ] && exit 0
 		    logger -t hotplug "${INTERFACE} went up, creating GRETAP interface"
-		    ip link add "gre4t-cghmn_gre" type gretap remote 172.23.4.103 ignore-df nopmtudisc
+		    ip link add "gre4t-cghmn_gre" type gretap remote 100.64.11.12 ignore-df nopmtudisc
 		    ip link set "gre4t-cghmn_gre" up
 		elif [ "${ACTION}" = "ifdown" ]; then
 		    [ -e "/sys/class/net/gre4t-cghmn_gre" ] || exit 0
@@ -440,11 +440,11 @@ step_init() {
 		set dhcp.@dnsmasq[-1].rebind_protection='0'
 	EOUCI
 
-	if ! uci -q get dhcp.@dnsmasq[-1].server | grep -q "100.89.128.0"; then
+	if ! uci -q get dhcp.@dnsmasq[-1].server | grep -q "100.64.12.2"; then
 		echo_verbose "Adding CGHMN DNS server to DNS server list"
-		uci -q add_list dhcp.@dnsmasq[-1].server='/cghmn/100.89.128.0' || \
+		uci -q add_list dhcp.@dnsmasq[-1].server='/cghmn/100.64.12.2' || \
 			failed "adding CGHMN DNS server to DNS server list (.cghmn)"
-		uci -q add_list dhcp.@dnsmasq[-1].server='/retro/100.89.128.0' || \
+		uci -q add_list dhcp.@dnsmasq[-1].server='/retro/100.64.12.2' || \
 			failed "adding CGHMN DNS server to DNS server list (.retro)"
 	fi
 
