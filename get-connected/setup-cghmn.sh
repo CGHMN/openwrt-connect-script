@@ -142,10 +142,10 @@ step_install_pkgs () {
 	echo "Installing required packages for the CGHMN Network"
 	
 	echo_verbose "Updating package database ..."
-	opkg update | echo_pipe_verbose || failed "updating package database"
+	apk update | echo_pipe_verbose || failed "updating package database"
 
 	echo_verbose "Installing packages luci-proto-wireguard, luci-proto-gre, kmod-nft-bridge"
-	opkg install \
+	apk add \
 		luci-proto-wireguard \
 		luci-proto-gre \
 		kmod-nft-bridge \
@@ -158,10 +158,10 @@ step_install_pkgs () {
 # Install qrencode package
 install_qrencode () {
 	echo_verbose "Updating package database ..."
-	opkg update | echo_pipe_verbose || failed "updating package database"
+	apk update | echo_pipe_verbose || failed "updating package database"
 
 	echo_verbose "Installing qrencode"
-	opkg install \
+	apk add \
 		qrencode \
 			| echo_pipe_verbose || \
 				failed "installing required packages"
